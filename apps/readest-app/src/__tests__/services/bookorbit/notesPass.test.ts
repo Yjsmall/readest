@@ -107,6 +107,21 @@ const makeDeps = (overrides: Partial<NotesPassDeps> = {}): NotesPassDeps => ({
 });
 
 describe('runBookOrbitNotesPass', () => {
+  it('keeps vocabulary out of pointer enrichment and annotation exchange', async () => {
+    const context = makeNote({
+      id: 'context-1',
+      type: 'context',
+      xpointer0: undefined,
+      note: '{"version":1}',
+    });
+    const deps = makeDeps({ getNotes: () => [context] });
+    await runBookOrbitNotesPass(deps);
+    expect(deps.populateXPointers).not.toHaveBeenCalled();
+    const request = vi.mocked(deps.client.exchangeAnnotations).mock.calls[0]?.[0]?.[0];
+    expect(request?.keys ?? []).toEqual([]);
+    expect(request?.changes ?? []).toEqual([]);
+  });
+
   it('match-checks the open book as a current file so BookOrbit lists it for manual linking', async () => {
     const deps = makeDeps();
     await runBookOrbitNotesPass(deps);

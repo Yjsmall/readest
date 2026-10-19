@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import React from 'react';
-import { PiNotePencil, PiRobot } from 'react-icons/pi';
+import { PiBookmarks, PiNotePencil, PiRobot } from 'react-icons/pi';
 
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -21,14 +21,14 @@ const NotebookTabNavigation: React.FC<NotebookTabNavigationProps> = ({
   const { settings } = useSettingsStore();
   const aiEnabled = settings?.aiSettings?.enabled ?? false;
 
-  const tabs: NotebookTab[] = aiEnabled ? ['notes', 'ai'] : [];
-
-  if (tabs.length === 0) return null;
+  const tabs: NotebookTab[] = aiEnabled ? ['notes', 'context', 'ai'] : ['notes', 'context'];
 
   const getTabLabel = (tab: NotebookTab) => {
     switch (tab) {
       case 'notes':
         return _('Notes');
+      case 'context':
+        return _('Vocabulary');
       case 'ai':
         return _('AI');
       default:
@@ -40,6 +40,8 @@ const NotebookTabNavigation: React.FC<NotebookTabNavigationProps> = ({
     switch (tab) {
       case 'notes':
         return <PiNotePencil className='mx-auto' size={20} />;
+      case 'context':
+        return <PiBookmarks className='mx-auto' size={20} />;
       case 'ai':
         return <PiRobot className='mx-auto' size={20} />;
       default:
@@ -60,8 +62,9 @@ const NotebookTabNavigation: React.FC<NotebookTabNavigationProps> = ({
           key={tab}
           tabIndex={0}
           role='button'
+          aria-pressed={activeTab === tab}
           className={clsx(
-            'm-1.5 flex-1 cursor-pointer rounded-lg p-2 transition-colors duration-200',
+            'm-1.5 flex-1 cursor-pointer rounded-lg p-2 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2',
             activeTab === tab && 'bg-base-300/85',
           )}
           onClick={() => onTabChange(tab)}

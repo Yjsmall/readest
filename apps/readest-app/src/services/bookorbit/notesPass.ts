@@ -96,7 +96,9 @@ const exchangeNotes = async (deps: NotesPassDeps): Promise<void> => {
   // notes are overlaid locally so this pass doesn't depend on the merge
   // having landed in the store yet.
   let notes = deps.getNotes();
-  const needsPointers = notes.filter((note) => !note.deletedAt && note.cfi && !note.xpointer0);
+  const needsPointers = notes.filter(
+    (note) => note.type !== 'context' && !note.deletedAt && note.cfi && !note.xpointer0,
+  );
   if (needsPointers.length > 0) {
     const enriched = await deps.populateXPointers(needsPointers);
     deps.mergeNotes(enriched, []);

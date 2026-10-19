@@ -14,6 +14,16 @@ import type { NotebookTab } from '@/store/notebookStore';
 import type { DictionarySettings, ImportedDictionary } from '@/services/dictionaries/types';
 
 export type ThemeType = 'light' | 'dark' | 'auto';
+export type VocabularyField =
+  | 'wordTranslation'
+  | 'sentenceTranslation'
+  | 'grammarAnalysis'
+  | 'vocabularyAnalysis';
+export type VocabularyOptions = Record<VocabularyField, boolean>;
+export type VocabularyPrompts = Partial<Record<VocabularyField, string>>;
+export interface ContextVocabularySettings extends VocabularyOptions {
+  prompts?: VocabularyPrompts;
+}
 export type LibraryViewModeType = 'grid' | 'list';
 export const LibrarySortByType = {
   Title: 'title',
@@ -586,6 +596,7 @@ export interface SystemSettings {
   icloud: ICloudSettings;
 
   aiSettings: AISettings;
+  contextVocabulary?: ContextVocabularySettings;
   /**
    * Per-device id used as the deviceId portion of every HLC this device
    * mints. Lazy-generated on first sync init via uuidv4 (mirrors

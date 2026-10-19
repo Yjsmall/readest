@@ -19,6 +19,10 @@ import { getBookProgress, useBookProgress } from '@/store/readerProgressStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useNotebookStore } from '@/store/notebookStore';
+import { useContextVocabularyStore } from '@/store/contextVocabularyStore';
+import { captureVocabulary, type VocabularyCapture } from '@/utils/contextVocabulary';
+import { collectVocabulary } from '../../services/contextVocabulary';
+import VocabularySentenceDialog from './VocabularySentenceDialog';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useCustomDictionaryStore } from '@/store/customDictionaryStore';
 import { isSystemDictionaryEnabled } from '@/services/dictionaries/registry';
@@ -197,6 +201,10 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   const [selection, setSelection] = useState<TextSelection | null>(null);
   const [translationEpoch, setTranslationEpoch] = useState(0);
   const [showAnnotPopup, setShowAnnotPopup] = useState(false);
+  const [pendingVocabulary, setPendingVocabulary] = useState<{
+    capture: VocabularyCapture;
+    cfi: string;
+  } | null>(null);
   const [showDictionaryPopup, setShowDictionaryPopup] = useState(false);
   const [showDeepLPopup, setShowDeepLPopup] = useState(false);
   const [showProofreadPopup, setShowProofreadPopup] = useState(false);
@@ -1945,6 +1953,56 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
     setShowDictionaryPopup(true);
   };
 
+  const saveVocabularyCapture = async (capture: VocabularyCapture, cfi: string) => {
+    // The async save stays bound to the captured book even if another view becomes active.
+    try {
+      const id = await collectVocabulary(
+        envConfig,
+        bookKey,
+        capture,
+        cfi,
+        primaryLang,
+        viewSettings.translateTargetLang,
+      );
+      useContextVocabularyStore.getState().select(id);
+      useSidebarStore.getState().setSideBarBookKey(bookKey);
+      setNotebookActiveTab('context');
+      setNotebookVisible(true);
+    } catch {
+      eventDispatcher.dispatch('toast', {
+        type: 'error',
+        message: _("Couldn't save"),
+        timeout: 3000,
+      });
+    }
+  };
+
+  const handleCollectVocabulary = () => {
+    if (!selection?.text || !selection.range) return;
+    const cfi =
+      selection.cfi ||
+      (selection.popup ? undefined : view?.getCFI(selection.index, selection.range));
+    if (!cfi) return;
+    let capture = captureVocabulary(selection.range);
+    if ((selection.segments?.length ?? 0) > 1) {
+      const word = selection.text.replace(/\s+/g, ' ').trim();
+      capture = {
+        word,
+        sentence: word,
+        wordStart: 0,
+        wordEnd: word.length,
+        needsConfirmation: true,
+      };
+    }
+    if (!capture) return;
+    handleDismissPopupAndSelection();
+    if (capture.needsConfirmation) {
+      setPendingVocabulary({ capture, cfi });
+    } else {
+      void saveVocabularyCapture(capture, cfi);
+    }
+  };
+
   const handleTranslation = () => {
     if (!selection || !selection.text) return;
     setShowAnnotPopup(false);
@@ -2457,7 +2515,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
 
     const config = getConfig(bookKey)!;
     const { booknotes: allNotes = [] } = config;
-    const booknotes = allNotes.filter((note) => note.type !== 'notebook' && !note.deletedAt);
+    const booknotes = allNotes.filter(
+      (note) => note.type !== 'notebook' && note.type !== 'context' && !note.deletedAt,
+    );
     if (booknotes.length === 0) {
       eventDispatcher.dispatch('toast', {
         type: 'info',
@@ -2635,6 +2695,13 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
         return { tooltipText: _(label), Icon, onClick: handleDictionary };
       case 'translate':
         return { tooltipText: _(label), Icon, onClick: handleTranslation };
+      case 'context':
+        return {
+          tooltipText: _(label),
+          Icon,
+          onClick: handleCollectVocabulary,
+          disabled: popupSelectionNoCfi,
+        };
       case 'tts':
         return {
           tooltipText: _(label),
@@ -2705,7 +2772,11 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
   // toolbar: hide them while any of those is open, and let them come back with
   // the toolbar (or go with the dismiss).
   const overlaySurfaceOpen =
-    showDictionaryPopup || showDeepLPopup || showProofreadPopup || !!noteEditorTarget;
+    showDictionaryPopup ||
+    showDeepLPopup ||
+    showProofreadPopup ||
+    !!noteEditorTarget ||
+    !!pendingVocabulary;
 
   // Below `sm` (or short landscape) the note editor is a bottom sheet rather
   // than a popup pinned to the selection: an anchored editor would sit under
@@ -2864,6 +2935,17 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
           noteAutoTurnPoint={noteAutoTurnPoint}
           cancelAutoTurn={cancelAutoTurn}
           onAutoTurn={onAutoTurn}
+        />
+      )}
+      {pendingVocabulary && (
+        <VocabularySentenceDialog
+          capture={pendingVocabulary.capture}
+          onClose={() => setPendingVocabulary(null)}
+          onConfirm={(capture) => {
+            const cfi = pendingVocabulary.cfi;
+            setPendingVocabulary(null);
+            void saveVocabularyCapture(capture, cfi);
+          }}
         />
       )}
       {quoteCard && (

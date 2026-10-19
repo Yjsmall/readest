@@ -24,10 +24,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('NotebookTabNavigation design regression', () => {
-  it('does not reserve an empty footer when AI is disabled', () => {
-    const { container } = render(<NotebookTabNavigation activeTab='notes' onTabChange={vi.fn()} />);
+  it('keeps Notes and Context accessible when AI is disabled', () => {
+    render(<NotebookTabNavigation activeTab='notes' onTabChange={vi.fn()} />);
 
-    expect(container.querySelector('.bottom-tab')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Notes' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vocabulary' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'AI' })).toBeNull();
   });
 
   it('shows the Notes and AI tabs when AI is enabled', () => {
@@ -36,5 +38,6 @@ describe('NotebookTabNavigation design regression', () => {
 
     expect(screen.getByRole('button', { name: 'Notes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'AI' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vocabulary' })).toBeTruthy();
   });
 });

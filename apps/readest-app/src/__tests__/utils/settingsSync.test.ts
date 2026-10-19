@@ -188,3 +188,25 @@ describe('broadcastGlobalSettings: readestCloud in the emitted payload', () => {
     expect(serialized).not.toContain('lastSyncedAt');
   });
 });
+
+describe('vocabulary preferences across reader windows', () => {
+  test('shares analysis switches and retains them when an older window omits the field', async () => {
+    const contextVocabulary = {
+      wordTranslation: false,
+      sentenceTranslation: true,
+      grammarAnalysis: true,
+      vocabularyAnalysis: false,
+    };
+    const settings = { ...local, contextVocabulary };
+    await broadcastGlobalSettings(settings);
+    expect(emit).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ contextVocabulary }),
+    );
+    const incoming = { ...globals, contextVocabulary };
+    expect(mergeSyncedGlobalSettings(local, incoming).contextVocabulary).toEqual(contextVocabulary);
+    expect(mergeSyncedGlobalSettings(settings, globals).contextVocabulary).toEqual(
+      contextVocabulary,
+    );
+  });
+});

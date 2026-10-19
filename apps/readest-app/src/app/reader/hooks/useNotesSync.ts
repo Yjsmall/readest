@@ -43,8 +43,8 @@ export const useNotesSync = (bookKey: string) => {
     const enriched: BookNote[] = [];
     for (const note of notes) {
       // KOReader turns any pulled note with an xpointer into a highlight, so a
-      // drawing never gets one; without it every plugin version skips it.
-      if (note.type !== 'ink' && note.cfi && !note.xpointer0) {
+      // drawing or vocabulary record never gets one; without it every plugin version skips it.
+      if (note.type !== 'ink' && note.type !== 'context' && note.cfi && !note.xpointer0) {
         try {
           const contents = view.renderer.getContents();
           const primaryIndex = view.renderer.primaryIndex;
@@ -147,7 +147,7 @@ export const useNotesSync = (bookKey: string) => {
     // does (see populateXPointersForPush), so it goes only when it changed.
     const newNotes = bookNotes.filter(
       (note) =>
-        (!note.xpointer0 && note.type !== 'ink') ||
+        (!note.xpointer0 && note.type !== 'ink' && note.type !== 'context') ||
         lastSyncedAtNotes < note.updatedAt ||
         lastSyncedAtNotes < (note.deletedAt ?? 0),
     );

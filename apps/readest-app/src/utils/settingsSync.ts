@@ -53,6 +53,7 @@ export interface CloudSyncProviderFlags {
 
 export interface SettingsSyncPayload {
   bookshelves?: SystemSettings['bookshelves'];
+  contextVocabulary?: SystemSettings['contextVocabulary'];
   /** Label of the window that persisted the change, so receivers ignore their own echo. */
   sourceLabel: string;
   globalViewSettings: SystemSettings['globalViewSettings'];
@@ -74,7 +75,11 @@ export const mergeSyncedGlobalSettings = (
   local: SystemSettings,
   payload: Pick<
     SettingsSyncPayload,
-    'globalViewSettings' | 'globalReadSettings' | 'cloudSyncProviders' | 'bookshelves'
+    | 'globalViewSettings'
+    | 'globalReadSettings'
+    | 'cloudSyncProviders'
+    | 'bookshelves'
+    | 'contextVocabulary'
   >,
 ): SystemSettings => {
   const merged: SystemSettings = {
@@ -82,6 +87,7 @@ export const mergeSyncedGlobalSettings = (
     globalViewSettings: payload.globalViewSettings,
     globalReadSettings: payload.globalReadSettings,
   };
+  if (payload.contextVocabulary) merged.contextVocabulary = payload.contextVocabulary;
   if (payload.bookshelves)
     merged.bookshelves = mergeBookshelfStates(local.bookshelves, payload.bookshelves);
   if (payload.cloudSyncProviders) {
@@ -123,6 +129,7 @@ export const broadcastGlobalSettings = async (
       globalViewSettings: settings.globalViewSettings,
       globalReadSettings: settings.globalReadSettings,
     };
+    if (settings.contextVocabulary) payload.contextVocabulary = settings.contextVocabulary;
     if (opts.includeCloudSyncProviders) {
       payload.cloudSyncProviders = {
         webdav: {

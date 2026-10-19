@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 
 const h = vi.hoisted(() => {
@@ -75,11 +75,41 @@ vi.mock('@/utils/xcfi', () => ({
 import { useNotesSync } from '@/app/reader/hooks/useNotesSync';
 
 describe('useNotesSync with handwriting', () => {
+  beforeEach(() => {
+    h.syncNotesMock.mockClear();
+    h.state.config = { location: undefined, booknotes: [] };
+  });
   afterEach(() => {
     cleanup();
   });
 
   const pushed = () => (h.syncNotesMock.mock.calls.at(-1) as unknown as [{ id: string }[]])[0];
+
+  test('syncs changed vocabulary without XPointer enrichment or repeated pushes', async () => {
+    h.syncNotesMock.mockClear();
+    h.state.config = { location: undefined, booknotes: [] };
+    const context = {
+      ...h.note,
+      id: 'context-1',
+      type: 'context',
+      note: '{"version":1}',
+      updatedAt: 3000,
+    };
+    const { rerender } = renderHook(() => useNotesSync('h1-key'));
+    h.state.config = { location: 'epubcfi(/6/4!/4/2/1:0)', booknotes: [context] };
+    rerender();
+    await waitFor(() => expect(h.syncNotesMock).toHaveBeenCalled());
+    expect(pushed()[0]).toMatchObject({ id: 'context-1', updatedAt: 3000 });
+    expect(pushed()[0]).not.toHaveProperty('xpointer0');
+    cleanup();
+    h.syncNotesMock.mockClear();
+    h.state.config = {
+      location: 'epubcfi(/6/4!/4/2/1:0)',
+      booknotes: [{ ...context, updatedAt: 1000 }],
+    };
+    renderHook(() => useNotesSync('h1-key'));
+    expect(pushed()).toEqual([]);
+  });
 
   test('pushes a changed drawing with its strokes, but no xpointer', async () => {
     const { rerender } = renderHook(() => useNotesSync('h1-key'));
